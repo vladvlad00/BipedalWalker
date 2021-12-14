@@ -90,3 +90,18 @@ class TD3:
         torch.save(self.actor_target.state_dict(), path + '_actor_target.pth')
         torch.save(self.critic_targets[0].state_dict(), path + '_critic1_target.pth')
         torch.save(self.critic_targets[1].state_dict(), path + '_critic2_target.pth')
+
+    def load(self, path):
+        self.actor.load_state_dict(torch.load(path + '_actor.pth', map_location=lambda storage, loc: storage))
+        self.actor_target.load_state_dict(
+            torch.load(path + '_actor_target.pth', map_location=lambda storage, loc: storage))
+
+        self.critics[0].load_state_dict(
+            torch.load(path + '_critic1.pth', map_location=lambda storage, loc: storage))
+        self.critic_targets[0].load_state_dict(
+            torch.load(path + '_critic1_target.pth', map_location=lambda storage, loc: storage))
+
+        self.critics[1].load_state_dict(
+            torch.load(path + '_critic2.pth', map_location=lambda storage, loc: storage))
+        self.critic_targets[1].load_state_dict(
+            torch.load(path + '_critic2_target.pth', map_location=lambda storage, loc: storage))

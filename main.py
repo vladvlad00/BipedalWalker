@@ -3,6 +3,7 @@ import time
 import gym
 import numpy as np
 from td3 import TD3
+from ddpg import DDPG
 from buffer import Buffer
 import matplotlib.pyplot as plt
 import os
@@ -34,6 +35,7 @@ def train(mini_batch=False):
     max_action = float(env.action_space.high[0])
 
     agent = TD3(lr, state_dim, action_dim, max_action)
+    # agent = DDPG(lr, state_dim, action_dim, max_action)
     replay_buffer = Buffer()
 
     rewards = []
@@ -43,7 +45,7 @@ def train(mini_batch=False):
         state = env.reset()
         nr_steps = 0
         while True:
-            env.render()
+            # env.render()
             action = agent.select_action(state)
             action = add_noise(action, action_dim, max_action)
 
@@ -57,6 +59,7 @@ def train(mini_batch=False):
             if done or (mini_batch and nr_steps == minibatch_size):
                 agent.update(replay_buffer, nr_steps, replay_batch_size, gamma, tau, policy_noise, noise_clip,
                              policy_freq)
+                # agent.update(replay_buffer, nr_steps, replay_batch_size, gamma, tau)
                 nr_steps = 0
                 if done:
                     break
@@ -82,5 +85,54 @@ def train(mini_batch=False):
             agent.save(os.path.join(checkpoint_dir, f'checkpoint_{i_episode}'))
 
 
+def test(checkpoint_name):
+    if checkpoint_name.startswith('td3'):
+        td3 = True
+    elif checkpoint_name.startswith('ddpg'):
+        td3 = False
+    else:
+        raise ValueError('Unknown agent')
+
+    lr = 0.001
+    nr_episodes = 20
+    avg_interval = 5
+
+    checkpoint_path = os.path.join('checkpoints', checkpoint_name)
+    env = gym.make('BipedalWalker-v3')
+    state_dim = env.observation_space.shape[0]
+    action_dim = env.action_space.shape[0]
+    max_action = float(env.action_space.high[0])
+
+    if td3:
+        agent = TD3(lr, state_dim, action_dim, max_action)
+        agent.load(checkpoint_path)
+    else:
+        agent = DDPG(lr, state_dim, action_dim, max_action)
+        agent.load(checkpoint_path)
+
+    rewards = []
+
+    for i_episode in range(1, nr_episodes + 1):
+        episode_reward = 0
+        state = env.reset()
+        while True:
+            env.render()
+            action = agent.select_action(state)
+
+            next_state, reward, done, _ = env.step(action)
+            state = next_state
+
+            episode_reward += reward
+
+            if done:
+                break
+        rewards.append(episode_reward)
+        avg_reward = np.mean(rewards[-avg_interval:])
+        print(f'Episode: {i_episode}\tReward: {episode_reward}\tAverage Reward (last {avg_interval}):'
+              f' {avg_reward}')
+
+
 if __name__ == '__main__':
-    train(mini_batch=True)
+    # train(mini_batch=True)
+    # test('td3_batch\\checkpoint_650\\checkpoint_650')
+    test('td3_minibatch\\checkpoint_1000\\checkpoint_1000')
